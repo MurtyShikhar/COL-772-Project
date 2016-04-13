@@ -12,20 +12,37 @@ from scipy import spatial
 import sys
 import time
 fin = gzip.open('/Users/apple/Desktop/Spring-2016/NLP_IITD/release/vectors.MSSG.300D.30K.gz')
+
+#fin = gzip.open('wordvectors-MSSG.gz')
 lines = fin.readlines()
 fin.close()
 
 
 class read_model:
 
-    def __init__(self ):
+    def __init__(self, read_vanilla_vec ):
         self.vocab = {}
         self.inverse_vocab = {}
         self.nCluster = {}
         self.weights = {}
         self.nClusterCount = {}
         self.nClusterCenter = {}
+        self.read_vanilla_vec = read_vanilla_vec
+    def read_vanilla_vec(self):
 
+        assert(self.read_vanilla_vec == 1)
+        V,D = map(lambda i: int(i), lines[0].strip().split(" "))
+        j = 1
+        for i in xrange(V):
+            line = lines[j].strip().split(" ")
+            j+=1
+            self.vocab[i] = line[0].lower()
+            self.inverse_vocab[self.vocab[i]] = i
+            self.weights[i] = {}
+            self.weights[i][0] = np.zeros(D)
+            line = lines[j].strip().split(" ")
+            for d in xrange(D): self.weights[i][0][d] = float(line[d])
+            j+=1
 
     def read_pretrained(self):
         V, D = map(lambda i: int(i)  ,lines[0].strip().split(" "))
@@ -61,8 +78,6 @@ class read_model:
                     line = lines[j].strip().split(" ")
                     j+=1
                     self.nClusterCenter[i][s] = np.zeros(D)
-        print '\r>> Done with %dth iteration' %i,
-        sys.stdout.flush()
 
 
 dataset = "/Users/apple/Desktop/Spring-2016/NLP_IITD/Project/multi-sense/MSSG/resources/ratings.txt"
@@ -80,7 +95,7 @@ print(len(words))
 f.close()
 
 average_scores = np.array(average_scores)
-Model = read_model() 
+Model = read_model(0) 
 Model.read_pretrained()
 
 
