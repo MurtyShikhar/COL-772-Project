@@ -1,4 +1,5 @@
 from keras import backend as K
+from keras.models import Sequential
 from keras.engine.topology import Layer
 import theano
 import theano.tensor as T
@@ -14,15 +15,18 @@ class SenseEmbedding(Layer):
         self.vector_dim = vector_dim 
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
+
+    def build(self, input_shape):
         self.W_g = self.init((input_dim, vector_dim))
         self.W_s = self.init((input_dim, vector_dim, K))
-        self.params = [self.W_g, self.W_s]
+        self.trainable_weights = [self.W_g, self.W_s]
 
     def call(self, x):
         sum_context = T.sum(self.W_g[x[1]])
         scores, ignore = T.scan(lambda w: T.dot(w, sum_context), sequences = [self.W_s[x[0]]], outputs = None)
-        curr_sense = T.argmax(scores)
-
+        right_sense = T.argmax(scores)
+        dot_prod = T.dot(self.W_s[x[0]][right_sense], self.W_g[x[2]])
+        return self.activation(dot_prod)
 
     def get_config(self):
          return {"name":self.__class__.__name__,
@@ -30,3 +34,12 @@ class SenseEmbedding(Layer):
                     "proj_dim":self.proj_dim,
                     "init":self.init.__name__,
                     "activation":self.activation.__name__}
+
+
+if __name__ == "__main__":
+    model = Sequential()
+    vocab_size = 1e4
+    dim = 200
+    num_senses = 3
+    model.add(SenseEmbedding(vocab_size, dim, num_senses))
+
