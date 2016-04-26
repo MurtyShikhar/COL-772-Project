@@ -26,14 +26,27 @@ class SenseEmbedding(Layer):
 
     def build(self, input_shape):
         self.W_g = self.init((self.input_dim, self.vector_dim))
-        self.W_s = self.init((self.input_dim, self.vector_dim, self.num_senses))
+        self.W_s = self.init((self.input_dim, self.num_senses, self.vector_dim))
         self.trainable_weights = [self.W_g, self.W_s]
 
     def call(self, x, mask = None):
-        sum_context = T.sum(self.W_g[x[:,2:]])
-        scores, ignore = theano.scan(lambda w: T.dot(w, sum_context), sequences = [self.W_s[x[:,0]]], outputs_info = None)
-        right_sense = T.argmax(scores)
-        dot_prod = T.dot(self.W_s[x[:,0]][right_sense], self.W_g[x[:,1]])
+        print("shape: ", x.shape)
+        W_g = self.W_g
+        W_s = self.W_s
+        nb = x.shape[0]
+        # sum up the global vectors for all the context words, sum_context = nb x self.vector_dim
+        sum_context = T.sum(W_g[x[:,2:]] , axis = 1)
+        # sequence_vectors is a num_senses x nb x self.vector_dim
+        sequence_vectors = W_s[x[:,0]].dimshuffle(1,0,2)
+        # scores is a matrix of size num_senses x nb
+        scores, ignore = theano.scan(lambda w: T.nlinalg.diag(T.dot(w, sum_context.T)), sequences = [sequence_vectors], outputs_info = None)
+
+        # right_senses is a vector of size nb
+        right_senses = T.argmax(scores, axis = 0)
+        # context_sense_vectors is a matrix of size nb x self.vector_dim
+        context_sense_vectors = W_s[x[:,0]][:,right_senses, :][T.arange(nb), 0]
+        dot_prod = T.nlinalg.diag(T.dot( context_sense_vectors, W_g[x[:,1]].T ))
+
         return self.activation(dot_prod)
 
     def get_output_shape_for(self, input_shape):
@@ -42,7 +55,7 @@ class SenseEmbedding(Layer):
 
     def get_config(self):
          return {"name":self.__class__.__name__,
-                    "input_dim":self.input_dim,
+                    "input_dim":self.vector_dim,
                     "proj_dim":self.proj_dim,
                     "init":self.init.__name__,
                     "activation":self.activation.__name__}

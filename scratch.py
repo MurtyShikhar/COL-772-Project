@@ -1,18 +1,20 @@
-from sense import SenseEmbedding;from keras.models import Sequential;
-model = Sequential()
-model.add(SenseEmbedding(1000, 100, 3, 4))
-model.compile(loss='mse', optimizer='rmsprop')
+from sense import SenseEmbedding;
+from wordvec import WordEmbedding;
+from keras.models import Sequential;
+from keras.utils.np_utils import to_categorical
+#model = Sequential()
+#model.add(SenseEmbedding(1000, 100, 3, 4))
+#model.compile(loss='mse', optimizer='rmsprop')
 
 
 from keras.preprocessing import text, sequence
-tokenizer = text.Tokenizer(1000)
-tokenizer.fit_on_texts([sentence])
-tokenizer.texts_to_sequences([sentence])
+
 
 
 import os, re, json
 import random
-
+from keras.utils import np_utils, generic_utils
+import numpy as np
 
 data_path = "HNCommentsAll.1perline.json"
 html_tags = re.compile(r'<.*?>')
@@ -35,8 +37,8 @@ def text_generator(path=data_path):
         comment_data = json.loads(l)
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
-        if i % 10000 == 0:
-            print(i)
+        if i % 50000 == 2:
+            break
         yield comment_text
     f.close()
 
@@ -110,7 +112,7 @@ def skipgrams(sequence, vocabulary_size,
         random.shuffle(labels)
 
     couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y) in couples]
-    return couples_augmented, labels
+    return couples, labels
 
 if __name__ == "__main__":
     model = Sequential()
@@ -119,13 +121,13 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-
-    model.add(SenseEmbedding(vocab_size, dim, num_senses, context_size))
+    model.add(WordEmbedding(vocab_size+1, dim, context_size))
+    #model.add(SenseEmbedding(vocab_size+1, dim, num_senses, context_size))
     model.compile(loss='mse', optimizer='rmsprop')
     print("Fit tokenizer...")
     tokenizer = text.Tokenizer(nb_words=vocab_size)
     tokenizer.fit_on_texts(text_generator())
-
+    sampling_table = sequence.make_sampling_table(vocab_size)
 
     for e in range(nb_epoch):
         print('-'*40)
@@ -138,12 +140,15 @@ if __name__ == "__main__":
         
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
-            couples, labels = skipgrams(seq, max_features, window_size=4, negative_samples=1., sampling_table=sampling_table)
+            couples, labels = skipgrams(seq, vocab_size, window_size=4, negative_samples=1., sampling_table=sampling_table)
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
                 X = np.array(couples, dtype="int32")
-                if (i % 100 == 0): print(X)
-                loss = model.train(X, labels)
+                labels= np.array(labels, dtype="int32")
+
+                print("X.shape:", X.shape)
+                print("labels:", labels.shape)
+                loss = model.train_on_batch(X, labels)
                 losses.append(loss)
                 if len(losses) % 100 == 0:
                     progbar.update(i, values=[("loss", np.mean(losses))])
