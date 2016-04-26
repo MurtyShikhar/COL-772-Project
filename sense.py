@@ -12,42 +12,43 @@ class SenseEmbedding(Layer):
 
     '''
 
-    def __init__(self, input_dim, vector_dim, num_senses, context_size, input_length = None, init = 'uniform', activation = 'sigmoid', **kwargs):
+    def __init__(self, output_dim, num_senses, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.input_dim = input_dim
-        self.vector_dim = vector_dim 
+        self.output_dim = output_dim 
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
-        #self.input_spec = [InputSpec(ndim=2, dtype = 'int32'), InputSpec(ndim=context_size, 'int32')] 
         self.num_senses = num_senses
-        self.input_length = input_length
         kwargs['input_dtype'] = 'int32'
-        kwargs['input_shape'] = (self.input_length, ) 
+
+        if self.input_dim:
+            kwargs['input_shape'] = (self.input_dim, ) 
         super(SenseEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.W_g = self.init((self.input_dim, self.vector_dim))
-        self.W_s = self.init((self.input_dim, self.num_senses, self.vector_dim))
+        assert len(input_shape) == 2
+        input_dim = input_shape[1]
+        self.W_g = self.init((input_dim, self.output_dim))
+        self.W_s = self.init((input_dim, self.num_senses, self.output_dim))
         self.trainable_weights = [self.W_g, self.W_s]
 
     def call(self, x, mask = None):
-        print("shape: ", x.shape)
         W_g = self.W_g
         W_s = self.W_s
         nb = x.shape[0]
         # sum up the global vectors for all the context words, sum_context = nb x self.vector_dim
-        sum_context = T.sum(W_g[x[:,2:]] , axis = 1)
+        sum_context = K.sum(W_g[x[:,2:]] , axis = 1)
         # sequence_vectors is a num_senses x nb x self.vector_dim
         sequence_vectors = W_s[x[:,0]].dimshuffle(1,0,2)
         # scores is a matrix of size num_senses x nb
-        scores, ignore = theano.scan(lambda w: T.nlinalg.diag(T.dot(w, sum_context.T)), sequences = [sequence_vectors], outputs_info = None)
+        scores, ignore = theano.scan(lambda w: K.batch_dot(w, sum_context, axes = 1), sequences = [sequence_vectors], outputs_info = None)
 
         # right_senses is a vector of size nb
-        right_senses = T.argmax(scores, axis = 0)
+        right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
-        context_sense_vectors = W_s[x[:,0]][:,right_senses, :][T.arange(nb), 0]
-        dot_prod = T.nlinalg.diag(T.dot( context_sense_vectors, W_g[x[:,1]].T ))
+        context_sense_vectors = W_s[x[:,0]][x[:,0], right_senses]
+        dot_prod = K.batch_dot(context_sense_vectors, W_g[x[:,1]], axes = 1)
 
-        return self.activation(dot_prod)
+        return self.activation(dot_prod) 
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2

@@ -37,8 +37,8 @@ def text_generator(path=data_path):
         comment_data = json.loads(l)
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
-        if i % 50000 == 2:
-            break
+        if (i % 50000 == 2):
+            break 
         yield comment_text
     f.close()
 
@@ -112,7 +112,7 @@ def skipgrams(sequence, vocabulary_size,
         random.shuffle(labels)
 
     couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y) in couples]
-    return couples, labels
+    return couples_augmented, labels
 
 if __name__ == "__main__":
     model = Sequential()
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(WordEmbedding(input_dim = vocab_size+1, output_dim = dim, context_size = context_size))
+    model.add(SenseEmbedding(input_dim = vocab_size+1, output_dim = dim, context_size = context_size, num_senses = 3))
     #model.add(SenseEmbedding(vocab_size+1, dim, num_senses, context_size))
     model.compile(loss='mse', optimizer='rmsprop')
     print("Fit tokenizer...")

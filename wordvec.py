@@ -31,9 +31,9 @@ class WordEmbedding(Layer):
         dot_prod = K.batch_dot(W_g[x[:,0]], W_g[x[:,1]], axes = 1)
         return self.activation(dot_prod)
 
-    # def get_output_shape_for(self, input_shape):
-    #     assert input_shape and len(input_shape) == 2
-    #     return (input_shape[0], 1)
+    def get_output_shape_for(self, input_shape):
+        assert input_shape and len(input_shape) == 2
+        return (input_shape[0], 1)
 
     def get_config(self):
          return {"name":self.__class__.__name__,
