@@ -35,6 +35,7 @@ class SenseEmbedding(Layer):
         W_g = self.W_g
         W_s = self.W_s
         nb = x.shape[0]
+
         # sum up the global vectors for all the context words, sum_context = nb x self.vector_dim
         sum_context = K.sum(W_g[x[:,2:]] , axis = 1)
         # sequence_vectors is a num_senses x nb x self.vector_dim
@@ -45,10 +46,10 @@ class SenseEmbedding(Layer):
         # right_senses is a vector of size nb
         right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
-        context_sense_vectors = W_s[x[:,0]][x[:,0], right_senses]
-        dot_prod = K.batch_dot(context_sense_vectors, W_g[x[:,1]], axes = 1)
-
-        return self.activation(dot_prod) 
+        context_sense_vectors = W_s[x[:,0], right_senses]
+        #dot_prod = K.batch_dot(context_sense_vectors, W_g[x[:,1]], axes = 1)
+        #dot_prod  = T.nlinalg.diag(T.dot( context_sense_vectors, W_g[x[:,1]].T ))
+        return self.activation(T.sum(scores, axis = 1)) 
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2
