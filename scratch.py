@@ -142,6 +142,7 @@ if __name__ == "__main__":
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
                 X = np.array(couples, dtype="int32")
+                if (i % 100 == 0): print(X)
                 loss = model.train(X, labels)
                 losses.append(loss)
                 if len(losses) % 100 == 0:
