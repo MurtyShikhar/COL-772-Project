@@ -16,7 +16,7 @@ import random
 from keras.utils import np_utils, generic_utils
 import numpy as np
 
-data_path = "HNCommentsAll.1perline.json"
+data_path = "hn-dump/HNCommentsAll.1perline.json"
 html_tags = re.compile(r'<.*?>')
 to_replace = [('&#x27;', "'")]
 hex_tags = re.compile(r'&.*?;')
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(WordEmbedding(vocab_size+1, dim, context_size))
+    model.add(WordEmbedding(input_dim = vocab_size+1, output_dim = dim, context_size = context_size))
     #model.add(SenseEmbedding(vocab_size+1, dim, num_senses, context_size))
     model.compile(loss='mse', optimizer='rmsprop')
     print("Fit tokenizer...")
