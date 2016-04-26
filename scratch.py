@@ -2,8 +2,9 @@ from sense import SenseEmbedding;from keras.models import Sequential;
 model = Sequential()
 model.add(SenseEmbedding(1000, 100, 3, 4))
 model.compile(loss='mse', optimizer='rmsprop')
-from keras.preprocessing import text
-sentence= "This is the best song ever made in the world."
+
+
+from keras.preprocessing import text, sequence
 tokenizer = text.Tokenizer(1000)
 tokenizer.fit_on_texts([sentence])
 tokenizer.texts_to_sequences([sentence])
@@ -111,4 +112,42 @@ def skipgrams(sequence, vocabulary_size,
     couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y) in couples]
     return couples_augmented, labels
 
+if __name__ == "__main__":
+    model = Sequential()
+    vocab_size = 50000
+    dim = 256
+    context_size = 4
+    num_senses = 3
+    nb_epoch = 10
+
+    model.add(SenseEmbedding(vocab_size, dim, num_senses, context_size))
+    model.compile(loss='mse', optimizer='rmsprop')
+    print("Fit tokenizer...")
+    tokenizer = text.Tokenizer(nb_words=vocab_size)
+    tokenizer.fit_on_texts(text_generator())
+
+
+    for e in range(nb_epoch):
+        print('-'*40)
+        print('Epoch', e)
+        print('-'*40)
+
+        progbar = generic_utils.Progbar(tokenizer.document_count)
+        samples_seen = 0
+        losses = []
+        
+        for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
+            # get skipgram couples for one text in the dataset
+            couples, labels = skipgrams(seq, max_features, window_size=4, negative_samples=1., sampling_table=sampling_table)
+            if couples:
+                # one gradient update per sentence (one sentence = a few 1000s of word couples)
+                X = np.array(couples, dtype="int32")
+                loss = model.train(X, labels)
+                losses.append(loss)
+                if len(losses) % 100 == 0:
+                    progbar.update(i, values=[("loss", np.mean(losses))])
+                    losses = []
+                samples_seen += len(labels)
+        print('Samples seen:', samples_seen)
+    print("Training completed!")
 
