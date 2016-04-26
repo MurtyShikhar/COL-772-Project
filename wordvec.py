@@ -3,8 +3,6 @@ from keras.models import Sequential
 from keras.engine.topology import Layer
 from keras.engine import InputSpec
 from keras import initializations, activations
-import theano
-import theano.tensor as T
 class WordEmbedding(Layer):
     ''' 
         Sense embeddings for NLP Project.
@@ -12,23 +10,25 @@ class WordEmbedding(Layer):
 
     '''
 
-    def __init__(self, input_dim, vector_dim, context_size, input_length = None, init = 'uniform', activation = 'sigmoid', **kwargs):
-        self.input_dim = input_dim
-        self.vector_dim = vector_dim 
+    def __init__(self, output_dim, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
-        self.input_length = input_length
+        self.output_dim = output_dim
+        self.input_dim = input_dim
         kwargs['input_dtype'] = 'int32'
-        kwargs['input_shape'] = (self.input_length, ) 
+        if self.input_dim:
+            kwargs['input_shape'] = (self.input_dim, ) 
         super(WordEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        self.W_g = self.init((self.input_dim, self.vector_dim))
+        assert len(input_shape) == 2
+        input_dim = input_shape[1]
+        self.W_g = self.init((input_dim, self.output_dim))
         self.trainable_weights = [self.W_g]
 
     def call(self, x, mask = None):
         W_g = self.W_g
-        dot_prod = T.nlinalg.diag(T.dot(W_g[x[:,0]], W_g[x[:,1]].T))
+        dot_prod = K.batch_dot(W_g[x[:,0]], W_g[x[:,1]], axes = 1)
         return self.activation(dot_prod)
 
     # def get_output_shape_for(self, input_shape):
