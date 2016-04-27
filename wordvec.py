@@ -5,12 +5,9 @@ from keras.engine import InputSpec
 from keras import initializations, activations
 import inspect
 class WordEmbedding(Layer):
-    ''' 
-        Simple word embeddings for NLP Project.
-
-    '''
-# TODO: CHOOSE BETTER INITIALIZATION
-    def __init__(self, vocab_dim, vector_dim, context_size = 0, input_dim = 2, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
+# Simple word embeddings for NLP Project.
+    # TODO: CHOOSE BETTER INITIALIZATION
+    def __init__(self, vocab_dim, vector_dim, input_dim = 2, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
         self.output_dim = output_dim
@@ -23,6 +20,7 @@ class WordEmbedding(Layer):
         super(WordEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
+        # input_shape is going to be (None, self.input_dim) in any case
         self.W_g = self.init((self.vocab_dim, self.vector_dim))
         self.trainable_weights = [self.W_g]
 

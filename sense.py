@@ -4,20 +4,28 @@ from keras.engine.topology import Layer
 from keras.engine import InputSpec
 from keras import initializations, activations
 import theano
+
 def cos_sim(vector1, vector2):
     return K.dot(vector1,vector2)
+import theano.tensor as T
+
+theano.config.optimizer = 'None'
+theano.config.exception_verbosity ='high'
+theano.optimizer='fast_compile'
+
 class SenseEmbedding(Layer):
-    ''' 
-        Sense embeddings for NLP Project.
-        Assumes K senses per word, and a global vector along with it.
+    
+        # Sense embeddings for NLP Project.
+        # Assumes K senses per word, and a global vector along with it.
 
-    '''
-
-    def __init__(self, num_senses, vocab_dim, vector_dim, context_size = 0, input_dim = 1, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
+    def __init__(self, num_senses, vocab_dim, vector_dim, context_size, input_dim = 1, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
+        self.input_dim = input_dim
+        self.vector_dim = vector_dim 
+        self.vocab_dim = vocab_dim
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
         self.output_dim = output_dim
-        self.input_dim = input_dim + context_size
+        self.input_dim = 2*context_size + 3
         self.vector_dim = vector_dim
         self.vocab_dim = vocab_dim
         self.num_senses = num_senses
@@ -35,6 +43,7 @@ class SenseEmbedding(Layer):
         W_g = self.W_g
         W_s = self.W_s
         nb = x.shape[0]
+
         # sum up the global vectors for all the context words, sum_context = nb x self.vector_dim
         sum_context = K.sum(W_g[x[:,2:]] , axis = 1)
         # sequence_vectors is a num_senses x nb x self.vector_dim
@@ -45,10 +54,13 @@ class SenseEmbedding(Layer):
         # right_senses is a vector of size nb
         right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
-        context_sense_vectors = W_s[x[:,0]][x[:,0], right_senses]
-        dot_prod = K.batch_dot(context_sense_vectors, W_g[x[:,1]], axes = 1)
+        correct_sense_vectors = W_s[x[:,0], right_senses]
+        context_global_vectors = W_g[x[:,1]]
+        dot_prod = K.batch_dot(correct_sense_vectors, context_global_vectors, axes = 1)
+        #dot_prod  = T.nlinalg.diag(T.dot( context_sense_vectors, W_g[x[:,1]].T ))
+        #return self.activation(T.sum(W_g[x[:,1]], axis = 0)) 
+        return self.activation(dot_prod)
 
-        return self.activation(dot_prod) 
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2
@@ -62,11 +74,4 @@ class SenseEmbedding(Layer):
                     "activation":self.activation.__name__}
 
 
-#if __name__ == "__main__":
-#    model = Sequential()
-#    vocab_size = 1e4
-#    dim = 200
-#    num_senses = 3
-#    context_size = 4
-#    model.add(SenseEmbedding(vocab_size, dim, num_senses, context_size))
 

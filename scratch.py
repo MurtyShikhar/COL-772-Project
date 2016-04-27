@@ -7,6 +7,9 @@ import inspect
 #model.add(SenseEmbedding(1000, 100, 3, 4))
 #model.compile(loss='mse', optimizer='rmsprop')
 
+import theano
+theano.config.optimizer = 'None'
+theano.config.exception_verbosity ='high'
 
 from keras.preprocessing import text, sequence
 
@@ -86,8 +89,11 @@ def skipgrams(sequence, vocabulary_size,
                
         window_start = max(0, i-window_size)
         window_end = min(len(sequence), i+window_size+1)
+        to_add = sequence[window_start : window_end]
+        while (len(to_add) != 2*window_size + 1):
+            to_add.append(0)
 
-        dict_of_contexts[wi] = sequence[window_start : window_end] 
+        dict_of_contexts[wi] = to_add
         for j in range(window_start, window_end):
             if j != i:
                 wj = sequence[j]
