@@ -6,6 +6,9 @@ from keras.utils.np_utils import to_categorical
 #model.add(SenseEmbedding(1000, 100, 3, 4))
 #model.compile(loss='mse', optimizer='rmsprop')
 
+import theano
+theano.config.optimizer = 'None'
+theano.config.exception_verbosity ='high'
 
 from keras.preprocessing import text, sequence
 

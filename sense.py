@@ -5,6 +5,10 @@ from keras.engine import InputSpec
 from keras import initializations, activations
 import theano
 import theano.tensor as T
+
+theano.config.optimizer = 'None'
+theano.config.exception_verbosity ='high'
+
 class SenseEmbedding(Layer):
     ''' 
         Sense embeddings for NLP Project.
@@ -47,9 +51,9 @@ class SenseEmbedding(Layer):
         right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
         context_sense_vectors = W_s[x[:,0], right_senses]
-        #dot_prod = K.batch_dot(context_sense_vectors, W_g[x[:,1]], axes = 1)
+        dot_prod = K.batch_dot(context_sense_vectors, W_g[x[:,1]], axes = 1)
         #dot_prod  = T.nlinalg.diag(T.dot( context_sense_vectors, W_g[x[:,1]].T ))
-        return self.activation(T.sum(scores, axis = 1)) 
+        return self.activation(dot_prod) 
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2
@@ -63,11 +67,4 @@ class SenseEmbedding(Layer):
                     "activation":self.activation.__name__}
 
 
-#if __name__ == "__main__":
-#    model = Sequential()
-#    vocab_size = 1e4
-#    dim = 200
-#    num_senses = 3
-#    context_size = 4
-#    model.add(SenseEmbedding(vocab_size, dim, num_senses, context_size))
 
