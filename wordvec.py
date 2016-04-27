@@ -5,8 +5,7 @@ from keras.engine import InputSpec
 from keras import initializations, activations
 class WordEmbedding(Layer):
     ''' 
-        Sense embeddings for NLP Project.
-        Assumes K senses per word, and a global vector along with it.
+        Word embeddings for NLP Project.
 
     '''
 
