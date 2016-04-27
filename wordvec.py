@@ -10,11 +10,12 @@ class WordEmbedding(Layer):
 
     '''
 
-    def __init__(self, output_dim, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
+    def __init__(self, features, vocab_size, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
+        self.input_dim = input_dim
+        self.features = features
+        self.vocab_size = vocab_size
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
-        self.output_dim = output_dim
-        self.input_dim = input_dim
         kwargs['input_dtype'] = 'int32'
         if self.input_dim:
             kwargs['input_shape'] = (self.input_dim, ) 
@@ -22,8 +23,9 @@ class WordEmbedding(Layer):
 
     def build(self, input_shape):
         assert len(input_shape) == 2
-        input_dim = input_shape[1]
-        self.W_g = self.init((input_dim, self.output_dim))
+        #input_dim = input_shape[1]
+        # input_shape is going to be (None, self.input_dim) in any case
+        self.W_g = self.init((self.vocab_size, self.features))
         self.trainable_weights = [self.W_g]
 
     def call(self, x, mask = None):

@@ -118,7 +118,7 @@ def skipgrams(sequence, vocabulary_size,
         random.shuffle(labels)
 
     couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y) in couples]
-    return couples_augmented, labels
+    return couples, labels
 
 if __name__ == "__main__":
     model = Sequential()
@@ -127,7 +127,10 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(SenseEmbedding(input_dim = vocab_size+1, output_dim = dim, context_size = context_size, num_senses = 3))
+    #model.add(SenseEmbedding(vocab_size= vocab_size+1,input_dim = 2*context_size + 1, features = dim, context_size = context_size, num_senses = 3))
+
+    model.add(WordEmbedding(vocab_size = vocab_size+1, features = dim, context_size = context_size, input_dim = 2))
+
     #model.add(SenseEmbedding(vocab_size+1, dim, num_senses, context_size))
     model.compile(loss='mse', optimizer='rmsprop')
     print("Fit tokenizer...")
