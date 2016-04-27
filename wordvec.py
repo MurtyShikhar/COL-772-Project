@@ -3,28 +3,29 @@ from keras.models import Sequential
 from keras.engine.topology import Layer
 from keras.engine import InputSpec
 from keras import initializations, activations
+import inspect
 class WordEmbedding(Layer):
     ''' 
-        Sense embeddings for NLP Project.
-        Assumes K senses per word, and a global vector along with it.
+        Simple word embeddings for NLP Project.
 
     '''
-
-    def __init__(self, output_dim, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
+# TODO: CHOOSE BETTER INITIALIZATION
+    def __init__(self, vocab_dim, vector_dim, context_size = 0, input_dim = 1, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
         self.output_dim = output_dim
-        self.input_dim = input_dim
+        self.input_dim = input_dim + context_size
+        self.vector_dim = vector_dim
+        self.vocab_dim = vocab_dim
         kwargs['input_dtype'] = 'int32'
         if self.input_dim:
             kwargs['input_shape'] = (self.input_dim, ) 
         super(WordEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        assert len(input_shape) == 2
-        input_dim = input_shape[1]
-        self.W_g = self.init((input_dim, self.output_dim))
+        self.W_g = self.init((self.vocab_dim, self.vector_dim))
         self.trainable_weights = [self.W_g]
+
 
     def call(self, x, mask = None):
         W_g = self.W_g

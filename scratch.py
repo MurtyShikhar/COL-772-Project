@@ -2,6 +2,7 @@ from sense import SenseEmbedding;
 from wordvec import WordEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
+import inspect
 #model = Sequential()
 #model.add(SenseEmbedding(1000, 100, 3, 4))
 #model.compile(loss='mse', optimizer='rmsprop')
@@ -21,6 +22,11 @@ html_tags = re.compile(r'<.*?>')
 to_replace = [('&#x27;', "'")]
 hex_tags = re.compile(r'&.*?;')
 
+def get_class_that_defined_method(meth):
+    for cls in inspect.getmro(meth.im_class):
+        if meth.__name__ in cls.__dict__: 
+            return inspect.getfile(cls)
+    return None
 
 def clean_comment(comment):
     c = str(comment.encode("utf-8"))
@@ -76,7 +82,7 @@ def skipgrams(sequence, vocabulary_size,
             if sampling_table[wi] < random.random():
                 continue
 
-
+# TODO: ASSUMES EACH WORD OCCURS ATMOST ONCE PER SENTENCE
                
         window_start = max(0, i-window_size)
         window_end = min(len(sequence), i+window_size+1)
@@ -93,6 +99,7 @@ def skipgrams(sequence, vocabulary_size,
                 else:
                     labels.append(1)
 
+# TODO: SAMPLING OF NEGATIVE EXAMPLES SHOULD BE FROM A DIFFERENT DISTRIUBTION D^{3/4} WHERE D IS THE WORD DISTRIBUTION
     if negative_samples > 0:
         nb_negative_samples = int(len(labels) * negative_samples)
         words = [c[0] for c in couples]
@@ -113,6 +120,7 @@ def skipgrams(sequence, vocabulary_size,
 
     couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y) in couples]
     return couples_augmented, labels
+    # return couples, labels
 
 if __name__ == "__main__":
     model = Sequential()
@@ -120,9 +128,9 @@ if __name__ == "__main__":
     dim = 256
     context_size = 4
     num_senses = 3
-    nb_epoch = 10
-    model.add(SenseEmbedding(input_dim = vocab_size+1, output_dim = dim, context_size = context_size, num_senses = 3))
-    #model.add(SenseEmbedding(vocab_size+1, dim, num_senses, context_size))
+    nb_epoch = 2
+    model.add(SenseEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size, num_senses = 3))
+    # model.add(WordEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size))
     model.compile(loss='mse', optimizer='rmsprop')
     print("Fit tokenizer...")
     tokenizer = text.Tokenizer(nb_words=vocab_size)
@@ -137,7 +145,6 @@ if __name__ == "__main__":
         progbar = generic_utils.Progbar(tokenizer.document_count)
         samples_seen = 0
         losses = []
-        
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
             couples, labels = skipgrams(seq, vocab_size, window_size=4, negative_samples=1., sampling_table=sampling_table)

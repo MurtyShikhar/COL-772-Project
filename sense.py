@@ -4,7 +4,8 @@ from keras.engine.topology import Layer
 from keras.engine import InputSpec
 from keras import initializations, activations
 import theano
-import theano.tensor as T
+def cos_sim(vector1, vector2):
+    return K.dot(vector1,vector2)
 class SenseEmbedding(Layer):
     ''' 
         Sense embeddings for NLP Project.
@@ -12,23 +13,22 @@ class SenseEmbedding(Layer):
 
     '''
 
-    def __init__(self, output_dim, num_senses, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
-        self.input_dim = input_dim
-        self.output_dim = output_dim 
+    def __init__(self, num_senses, vocab_dim, vector_dim, context_size = 0, input_dim = 1, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
+        self.output_dim = output_dim
+        self.input_dim = input_dim + context_size
+        self.vector_dim = vector_dim
+        self.vocab_dim = vocab_dim
         self.num_senses = num_senses
         kwargs['input_dtype'] = 'int32'
-
         if self.input_dim:
             kwargs['input_shape'] = (self.input_dim, ) 
         super(SenseEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        assert len(input_shape) == 2
-        input_dim = input_shape[1]
-        self.W_g = self.init((input_dim, self.output_dim))
-        self.W_s = self.init((input_dim, self.num_senses, self.output_dim))
+        self.W_g = self.init((self.vocab_dim, self.vector_dim))
+        self.W_s = self.init((self.vocab_dim, self.num_senses, self.vector_dim))
         self.trainable_weights = [self.W_g, self.W_s]
 
     def call(self, x, mask = None):
