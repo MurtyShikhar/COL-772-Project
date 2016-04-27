@@ -8,6 +8,7 @@ import theano.tensor as T
 
 theano.config.optimizer = 'None'
 theano.config.exception_verbosity ='high'
+theano.optimizer='fast_compile'
 
 class SenseEmbedding(Layer):
     ''' 
