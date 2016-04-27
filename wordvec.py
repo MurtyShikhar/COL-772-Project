@@ -3,28 +3,25 @@ from keras.models import Sequential
 from keras.engine.topology import Layer
 from keras.engine import InputSpec
 from keras import initializations, activations
+import inspect
 class WordEmbedding(Layer):
-    ''' 
-        Word embeddings for NLP Project.
-
-    '''
-
-    def __init__(self, features, vocab_size, context_size, input_dim = None, init = 'uniform', activation = 'sigmoid', **kwargs):
-        self.input_dim = input_dim
-        self.features = features
-        self.vocab_size = vocab_size
+# Simple word embeddings for NLP Project.
+    # TODO: CHOOSE BETTER INITIALIZATION
+    def __init__(self, vocab_dim, vector_dim, input_dim = 2, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.init = initializations.get(init)
         self.activation = activations.get(activation)
+        self.output_dim = output_dim
+        self.input_dim = input_dim + context_size
+        self.vector_dim = vector_dim
+        self.vocab_dim = vocab_dim
         kwargs['input_dtype'] = 'int32'
         if self.input_dim:
             kwargs['input_shape'] = (self.input_dim, ) 
         super(WordEmbedding, self).__init__(**kwargs)
 
     def build(self, input_shape):
-        assert len(input_shape) == 2
-        #input_dim = input_shape[1]
         # input_shape is going to be (None, self.input_dim) in any case
-        self.W_g = self.init((self.vocab_size, self.features))
+        self.W_g = self.init((self.vocab_dim, self.vector_dim))
         self.trainable_weights = [self.W_g]
 
     def call(self, x, mask = None):
