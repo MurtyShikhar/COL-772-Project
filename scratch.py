@@ -1,4 +1,4 @@
-from sense import SenseEmbedding;
+from sense import SenseEmbedding, logl_loss;
 from wordvec import WordEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
@@ -46,7 +46,7 @@ def text_generator(path=data_path):
         comment_data = json.loads(l)
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
-        if (i % 50000 == 2):
+        if (i == 5000):
             break 
         yield comment_text
     f.close()
@@ -134,10 +134,10 @@ if __name__ == "__main__":
     dim = 256
     context_size = 4
     num_senses = 3
-    nb_epoch = 2
+    nb_epoch = 10
     model.add(SenseEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size, num_senses = 3))
     # model.add(WordEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size))
-    model.compile(loss='mse', optimizer='rmsprop')
+    model.compile(loss=logl_loss, optimizer='rmsprop')
     print("Fit tokenizer...")
     tokenizer = text.Tokenizer(nb_words=vocab_size)
     tokenizer.fit_on_texts(text_generator())
@@ -159,14 +159,18 @@ if __name__ == "__main__":
                 X = np.array(couples, dtype="int32")
                 labels= np.array(labels, dtype="int32")
 
-                print("X.shape:", X.shape)
-                print("labels:", labels.shape)
                 loss = model.train_on_batch(X, labels)
                 losses.append(loss)
-                if len(losses) % 100 == 0:
+                if len(losses) % 10 == 0:
+                    print ('\nBatch Loss: '+str(np.mean(loss)))
                     progbar.update(i, values=[("loss", np.mean(losses))])
+
                     losses = []
                 samples_seen += len(labels)
         print('Samples seen:', samples_seen)
     print("Training completed!")
+    json_string = model.to_json()
+    open('sense_vectors_architecture.json', 'w').write(json_string)
+    model.save_weights('sense_vectors_weights.h5')
+
 

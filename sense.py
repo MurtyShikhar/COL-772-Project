@@ -4,14 +4,15 @@ from keras.engine.topology import Layer
 from keras.engine import InputSpec
 from keras import initializations, activations
 import theano
-
-def cos_sim(vector1, vector2):
-    return K.dot(vector1,vector2)
 import theano.tensor as T
 
-theano.config.optimizer = 'None'
-theano.config.exception_verbosity ='high'
-theano.optimizer='fast_compile'
+def logl_loss(y_true, y_pred):
+    return K.sum(y_true*K.log(y_pred) + (1-y_true)*K.log(1-y_pred))
+
+# USE BELOW TAGS FOR DEBUGGING
+# theano.config.optimizer = 'None'
+# theano.config.exception_verbosity ='high'
+# theano.optimizer='fast_compile'
 
 class SenseEmbedding(Layer):
     
@@ -43,14 +44,14 @@ class SenseEmbedding(Layer):
         W_g = self.W_g
         W_s = self.W_s
         nb = x.shape[0]
-
+        shape = theano.printing.Print('shape of x')(x.shape)
         # sum up the global vectors for all the context words, sum_context = nb x self.vector_dim
         sum_context = K.sum(W_g[x[:,2:]] , axis = 1)
         # sequence_vectors is a num_senses x nb x self.vector_dim
         sequence_vectors = W_s[x[:,0]].dimshuffle(1,0,2)
         # scores is a matrix of size num_senses x nb
-        scores, ignore = theano.scan(lambda w: K.batch_dot(w, sum_context, axes = 1), sequences = [sequence_vectors], outputs_info = None)
-
+        scores, ignore = theano.scan(lambda w: K.batch_dot(K.l2_normalize(w, axis = 0), sum_context, axes = 1), sequences = [sequence_vectors], outputs_info = None)
+        scores = scores.dimshuffle(0,1)
         # right_senses is a vector of size nb
         right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
