@@ -3,8 +3,10 @@ from wordvec import WordEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
 import inspect
+import cPickle
 #model = Sequential()
 #model.add(SenseEmbedding(1000, 100, 3, 4))
+from keras.utils.generic_utils import Progbar
 #model.compile(loss='mse', optimizer='rmsprop')
 
 import theano
@@ -12,7 +14,7 @@ theano.config.optimizer = 'None'
 theano.config.exception_verbosity ='high'
 
 from keras.preprocessing import text, sequence
-
+import logging
 
 
 import os, re, json
@@ -20,6 +22,9 @@ import random
 from keras.utils import np_utils, generic_utils
 import numpy as np
 
+
+logging.basicConfig(filename="sense_vectors.log",level=logging.INFO)
+log = logging.getLogger("ex")
 data_path = "hn-dump/HNCommentsAll.1perline.json"
 html_tags = re.compile(r'<.*?>')
 to_replace = [('&#x27;', "'")]
@@ -46,8 +51,8 @@ def text_generator(path=data_path):
         comment_data = json.loads(l)
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
-        if (i == 5000):
-            break 
+        if (i % 50000) == 0:
+            print i
         yield comment_text
     f.close()
 
@@ -89,7 +94,7 @@ def skipgrams(sequence, vocabulary_size,
                
         window_start = max(0, i-window_size)
         window_end = min(len(sequence), i+window_size+1)
-        to_add = sequence[window_start : window_end]
+        to_add = sequence[window_start : i] + sequence[i+1: window_end]
         while (len(to_add) != 2*window_size + 1):
             to_add.append(0)
 
@@ -135,12 +140,29 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(SenseEmbedding(input_dim = 2*context + 3, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
-    # model.add(WordEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size))
+    model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     model.compile(loss=logl_loss, optimizer='rmsprop')
-    print("Fit tokenizer...")
-    tokenizer = text.Tokenizer(nb_words=vocab_size)
-    tokenizer.fit_on_texts(text_generator())
+    fit =0
+    tokenizer_fname = "HN_tokenizer.pkl"
+    if fit:
+        print("Fit tokenizer...")
+        tokenizer = text.Tokenizer(nb_words=vocab_size)
+        tokenizer.fit_on_texts(text_generator())
+        
+
+        print("Save tokenizer...")
+        f = open(tokenizer_fname, "wb")
+
+        cPickle.dump(tokenizer, f, protocol=cPickle.HIGHEST_PROTOCOL)
+        f.close()
+
+    else:
+        print('Load tokenizer...')
+        f = open(tokenizer_fname, "rb")
+        tokenizer = cPickle.load(f)
+        f.close()
+
+
     sampling_table = sequence.make_sampling_table(vocab_size)
 
     for e in range(nb_epoch):
@@ -148,7 +170,7 @@ if __name__ == "__main__":
         print('Epoch', e)
         print('-'*40)
 
-        progbar = generic_utils.Progbar(tokenizer.document_count)
+        progbar = Progbar(tokenizer.document_count)
         samples_seen = 0
         losses = []
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):

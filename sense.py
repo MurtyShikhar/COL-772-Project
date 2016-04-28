@@ -19,7 +19,7 @@ class SenseEmbedding(Layer):
         # Sense embeddings for NLP Project.
         # Assumes K senses per word, and a global vector along with it.
 
-    def __init__(self, num_senses, vocab_dim, vector_dim, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
+    def __init__(self, num_senses, vocab_dim, vector_dim, input_dim, output_dim = 1, init = 'uniform', activation = 'sigmoid', **kwargs):
         self.input_dim = input_dim
         self.vector_dim = vector_dim 
         self.vocab_dim = vocab_dim
@@ -48,7 +48,7 @@ class SenseEmbedding(Layer):
         sequence_vectors = W_s[x[:,0]].dimshuffle(1,0,2)
         # scores is a matrix of size num_senses x nb
         scores, ignore = theano.scan(lambda w: K.batch_dot(K.l2_normalize(w, axis = 0), sum_context, axes = 1), sequences = [sequence_vectors], outputs_info = None)
-        scores = scores.reshape((0,1))
+        scores = scores.reshape((self.num_senses, nb))
         # right_senses is a vector of size nb
         right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
@@ -64,8 +64,9 @@ class SenseEmbedding(Layer):
 
     def get_config(self):
          return {"name":self.__class__.__name__,
-                    "input_dim":self.vector_dim,
-                    "proj_dim":self.proj_dim,
+                    "input_dim":self.input_dim,
+                    "vector_dim":self.vector_dim,
+                    "vocab_dim" :self.vocab_dim,
                     "init":self.init.__name__,
                     "activation":self.activation.__name__}
 
