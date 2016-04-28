@@ -7,7 +7,7 @@ import theano
 import theano.tensor as T
 
 def logl_loss(y_true, y_pred):
-    return K.sum(y_true*y_pred + (1-y_true)*(1-y_pred))
+    return K.sum(y_true*K.log(y_pred) + (1-y_true)*K.log(1-y_pred))
 
 
 theano.config.optimizer = 'None'
