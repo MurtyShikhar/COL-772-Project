@@ -1,4 +1,4 @@
-from sense import SenseEmbedding;
+from sense import SenseEmbedding, logl_loss;
 from wordvec import WordEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     nb_epoch = 2
     model.add(SenseEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size, num_senses = 3))
     # model.add(WordEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size))
-    model.compile(loss='mse', optimizer='rmsprop')
+    model.compile(loss=logl_loss, optimizer='rmsprop')
     print("Fit tokenizer...")
     tokenizer = text.Tokenizer(nb_words=vocab_size)
     tokenizer.fit_on_texts(text_generator())
