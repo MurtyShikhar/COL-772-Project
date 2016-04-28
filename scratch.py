@@ -135,7 +135,7 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(SenseEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size, num_senses = 3))
+    model.add(SenseEmbedding(input_dim = 2*context + 3, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     # model.add(WordEmbedding(vocab_dim = vocab_size+1, vector_dim = dim, context_size = context_size))
     model.compile(loss=logl_loss, optimizer='rmsprop')
     print("Fit tokenizer...")
