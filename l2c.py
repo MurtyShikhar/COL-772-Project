@@ -56,7 +56,7 @@ class L2CEmbedding(Layer):
 	# Creates multiple emdeddings per sense of the word.
 	# Also keeps track of the senses of the context words and uses their embeddings.
 
-    def __init__(self, num_senses, vocab_dim, vector_dim, input_dim, output_dim = 1, init = 'linear', activation = 'sigmoid', **kwargs):
+    def __init__(self, num_senses, vocab_dim, vector_dim, input_dim, output_dim = 1, init = 'sigmoid', activation = 'sigmoid', **kwargs):
         self.input_dim = input_dim
         self.vector_dim = vector_dim 
         self.vocab_dim = vocab_dim
@@ -88,7 +88,8 @@ class L2CEmbedding(Layer):
         sense_dot_prod = K.batch_dot(words_sense_vector, contexts_sense_vector, axes = 1)
         global_dot_prod = K.batch_dot(W_g[x[:,0]], W_g[x[:,1]], axes = 1)
         dot_prod = sense_dot_prod + global_dot_prod
-        return self.activation(K.log(K.sigmoid(dot_prod)))
+        # return self.activation(K.log(K.sigmoid(dot_prod)))
+        return self.activation(dot_prod)
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2
