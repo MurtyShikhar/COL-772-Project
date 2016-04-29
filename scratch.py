@@ -1,5 +1,6 @@
 from sense import SenseEmbedding, logl_loss;
 from wordvec import WordEmbedding;
+from l2c import L2CEmbedding, logl_loss;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
 import inspect
@@ -52,7 +53,7 @@ def text_generator(path=data_path):
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
         if (i % 50000) == 100:
-            print i
+            break
         yield comment_text
     f.close()
 
@@ -104,7 +105,7 @@ def skipgrams(sequence, vocabulary_size,
                 wj = sequence[j]
                 if not wj:
                     continue
-                couples.append([wi, wj])
+                couples.append([wi, wj, j- window_start])
                 if categorical:
                     labels.append([0,1])
                 else:
@@ -116,7 +117,7 @@ def skipgrams(sequence, vocabulary_size,
         words = [c[0] for c in couples]
         random.shuffle(words)
 
-        couples += [[words[i %len(words)], random.randint(1, vocabulary_size-1)] for i in range(nb_negative_samples)]
+        couples += [[words[i %len(words)], random.randint(1, vocabulary_size-1), -1] for i in range(nb_negative_samples)]
         if categorical:
             labels += [[1,0]]*nb_negative_samples
         else:
@@ -128,8 +129,7 @@ def skipgrams(sequence, vocabulary_size,
         random.shuffle(couples)
         random.seed(seed)
         random.shuffle(labels)
-
-    couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y) in couples]
+    couples_augmented = [[x,y,z]+dict_of_contexts[x] for (x, y, z) in couples]
     return couples_augmented, labels
     # return couples, labels
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     nb_epoch = 10
     model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     model.compile(loss=logl_loss, optimizer='adagrad')
-    fit =0
+    fit = 1
     tokenizer_fname = "HN_tokenizer.pkl"
     if fit:
         print("Fit tokenizer...")

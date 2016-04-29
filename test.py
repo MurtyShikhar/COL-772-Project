@@ -20,11 +20,11 @@ def get_vector(curr_word, new_sense):
 	cond = T.eq(new_sense, -1)
 	return T.switch(cond, W_g[curr_word], W_s[curr_word][new_sense])
 
-
+# update the sense of a word in the context vector
 def change_context_vec(vect, new_sense, prev_sense, curr_word):
 	return vect - get_vector(curr_word, prev_sense) + get_vector(curr_word, new_sense)
 
-
+# updates the context vector with the best sense of the curr_word with sense curr_senses[i]
 def l2C(curr_word, i, curr_senses, context_vector):
 	# theano vector of size (num_senses,)
 	scores_all_senses = T.dot(context_vector, W_s[curr_word].T)
@@ -43,7 +43,6 @@ def l2C(curr_word, i, curr_senses, context_vector):
 def loss_fn_per_context(word_position,context):
 	# sum up the global vectors of the context
 	context_vector = T.sum(W_g[context], axis = 0)
-	#return context_vector
 	# start with -1 with none of the words disambiguated
 	start = -1*T.ones_like(context)
 
@@ -57,8 +56,7 @@ def loss_fn_per_context(word_position,context):
 	#return T.argsort(T.dot(context_vector, W_s[actual_word].T)), T.dot(context_vector, W_s[actual_word].T)
 
 	actual_word = context[word_position]
-	# #scores, ignore_updates = theano.scan(lambda s: T.dot(W_s[])   , sequences = [disambiguated_senses])
-
+	# Compute loss to update the global word vectors ignoring the word itself
 	def score(i):
 		return T.switch(T.eq(i, actual_word), 0, T.log(T.nnet.sigmoid(T.dot(W_g[actual_word], W_g[i]))))
 
