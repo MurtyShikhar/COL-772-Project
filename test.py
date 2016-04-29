@@ -20,8 +20,10 @@ def get_vector(curr_word, new_sense):
 	cond = T.eq(new_sense, -1)
 	return T.switch(cond, W_g[curr_word], W_s[curr_word][new_sense])
 
+
 def change_context_vec(vect, new_sense, prev_sense, curr_word):
 	return vect - get_vector(curr_word, prev_sense) + get_vector(curr_word, new_sense)
+
 
 def l2C(curr_word, i, curr_senses, context_vector):
 	# theano vector of size (num_senses,)

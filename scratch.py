@@ -51,7 +51,7 @@ def text_generator(path=data_path):
         comment_data = json.loads(l)
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
-        if (i % 50000) == 0:
+        if (i % 50000) == 100:
             print i
         yield comment_text
     f.close()
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     num_senses = 3
     nb_epoch = 10
     model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
-    model.compile(loss=logl_loss, optimizer='rmsprop')
+    model.compile(loss=logl_loss, optimizer='adagrad')
     fit =0
     tokenizer_fname = "HN_tokenizer.pkl"
     if fit:
@@ -173,6 +173,7 @@ if __name__ == "__main__":
         progbar = Progbar(tokenizer.document_count)
         samples_seen = 0
         losses = []
+        batch_loss = []
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
             couples, labels = skipgrams(seq, vocab_size, window_size=4, negative_samples=1., sampling_table=sampling_table)
@@ -183,11 +184,11 @@ if __name__ == "__main__":
 
                 loss = model.train_on_batch(X, labels)
                 losses.append(loss)
+                batch_loss.append(loss)
                 if len(losses) % 10 == 0:
-                    print ('\nBatch Loss: '+str(np.mean(loss)))
+                    print ('\nBatch Loss: '+str(np.mean(batch_loss)))
                     progbar.update(i, values=[("loss", np.mean(losses))])
-
-                    losses = []
+                    batch_loss = []
                 samples_seen += len(labels)
         print('Samples seen:', samples_seen)
     print("Training completed!")
