@@ -23,7 +23,7 @@ def get_vector(curr_word, new_sense, W_g, W_s):
 def change_context_vec(vect, new_sense, prev_sense, curr_word, W_g, W_s):
 	return vect - get_vector(curr_word, prev_sense) + get_vector(curr_word, new_sense)
 
-# updates the context vector with the best sense of the curr_word with sense curr_senses[i]
+# updates the context vector with the best sense of the curr_word with (prev) sense curr_senses[i]
 def l2C(curr_word, i, curr_senses, context_vector, W_g, W_s):
 	# theano vector of size (num_senses,)
 	scores_all_senses = T.dot(context_vector, W_s[curr_word].T)
@@ -38,18 +38,19 @@ def l2C(curr_word, i, curr_senses, context_vector, W_g, W_s):
 	return [new_senses, context_vector]
 
 # Perform word sense disambiguation and learn better context vector
-def disambiguate(context, W_g, W_s):
+def disambiguate(context, context_length, W_g, W_s):
 	context_vector = T.sum(W_g[context], axis = 0)
 	# start with -1 with none of the words disambiguated
-	start = -1*T.ones_like(context)
-	output_alg, updates = theano.scan(l2C, sequences = [context, T.arange(4)], outputs_info = [start, context_vector], non_sequences = [W_g, W_s])
+	start_sense = -1*T.ones_like(context)
+	output_alg, updates = theano.scan(l2C, sequences = [context, T.arange(context_length)], outputs_info = [start_sense, context_vector], non_sequences = [W_g, W_s])
 	disambiguated_senses = output_alg[0][-1]
 	augmented_context_vector = output_alg[1][-1]
 	return disambiguated_senses
 
-def get_sense_vector(word, sense, inx, W_g, W_s):
-	cond = T.eq(inx, -1)
-	return T.switch(cond, W_g[word], W_s[word, sense[inx]])
+def get_sense_vector(word, sense, inx, W_s):
+	cond = T.lt(inx, 0)
+	# FOR NEGATIVE SAMPLES, -i INDICATES SENSE A NEATIVE SAMPLE OF SENSE i
+	return T.switch(cond, W_s[word, -inx], W_s[word, sense[inx]])
 
 class L2CEmbedding(Layer):
 	# Creates multiple emdeddings per sense of the word.
@@ -79,12 +80,15 @@ class L2CEmbedding(Layer):
     	W_g = self.W_g
         W_s = self.W_s
         nb = x.shape[0]
-        actual_word_indx = (self.input_dim+3)/2 #same as context size + 3
-        right_senses,ignore_updates = theano.scan(disambiguate, sequences = x[:,3:], non_sequences = [W_g, W_s])
+        context_length = self.input_dim - 3
+        actual_word_indx = (self.input_dim+3)/2 #same as context + 3
+        right_senses,ignore_updates = theano.scan(disambiguate, sequences = x[:,3:], non_sequences = [context_length, W_g, W_s])
         words_sense_vector = W_s[x[:,0], right_senses[:,actual_word_indx]]
-        contexts_sense_vector, ignore_updates = theano.scan(get_sense_vector, sequences = [x[:,0],right_senses,x[:,2]], non_sequences = [W_g, W_s])
-        dot_prod = K.batch_dot(words_sense_vector, contexts_sense_vector, axes = 1)
-        return self.activation(dot_prod)
+        contexts_sense_vector, ignore_updates = theano.scan(get_sense_vector, sequences = [x[:,0],right_senses,x[:,2]], non_sequences = W_s)
+        sense_dot_prod = K.batch_dot(words_sense_vector, contexts_sense_vector, axes = 1)
+        global_dot_prod = K.batch_dot(W_g[x[:,0]], W_g[x[:,1]], axes = 1)
+        dot_prod = sense_dot_prod + global_dot_prod
+        return self.activation(K.log(K.sigmoid(dot_prod)))
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2

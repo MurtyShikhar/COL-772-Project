@@ -52,8 +52,8 @@ class SenseEmbedding(Layer):
         # right_senses is a vector of size nb
         right_senses = K.argmax(scores, axis = 0)
         # context_sense_vectors is a matrix of size nb x self.vector_dim
-        correct_sense_vectors = K.l2_normalize(W_s[x[:,0], right_senses], axis = 0)
-        context_global_vectors = K.l2_normalize(W_g[x[:,1]], axis = 0)
+        correct_sense_vectors = W_s[x[:,0], right_senses]
+        context_global_vectors = W_g[x[:,1]]
         dot_prod = K.batch_dot(correct_sense_vectors, context_global_vectors, axes = 1)
         return self.activation(dot_prod)
 

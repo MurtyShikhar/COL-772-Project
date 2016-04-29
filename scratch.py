@@ -53,11 +53,12 @@ def text_generator(path=data_path):
         comment_text = comment_data["comment_text"]
         comment_text = clean_comment(comment_text)
         if (i % 50000) == 100:
-            break
+            # break
+            print i
         yield comment_text
     f.close()
 
-def skipgrams(sequence, vocabulary_size,
+def skipgrams(sequence, vocabulary_size, num_senses = 3,
               window_size=4, negative_samples=1., shuffle=True,
               categorical=False, sampling_table=None):
     '''Take a sequence (list of indexes of words),
@@ -116,8 +117,8 @@ def skipgrams(sequence, vocabulary_size,
         nb_negative_samples = int(len(labels) * negative_samples)
         words = [c[0] for c in couples]
         random.shuffle(words)
-
-        couples += [[words[i %len(words)], random.randint(1, vocabulary_size-1), -1] for i in range(nb_negative_samples)]
+        # FOR NEGATIVE SAMPLES, -i INDICATES SENSE A NEATIVE SAMPLE OF SENSE i
+        couples += [[words[i %len(words)], random.randint(1, vocabulary_size-1), -1*np.random.randint(num_senses+1)] for i in range(nb_negative_samples)]
         if categorical:
             labels += [[1,0]]*nb_negative_samples
         else:
@@ -143,7 +144,7 @@ if __name__ == "__main__":
     model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     model.compile(loss=logl_loss, optimizer='adagrad')
     fit = 1
-    tokenizer_fname = "HN_tokenizer.pkl"
+    tokenizer_fname = "HN_tokenizer_sense.pkl"
     if fit:
         print("Fit tokenizer...")
         tokenizer = text.Tokenizer(nb_words=vocab_size)
@@ -176,7 +177,7 @@ if __name__ == "__main__":
         batch_loss = []
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
-            couples, labels = skipgrams(seq, vocab_size, window_size=4, negative_samples=1., sampling_table=sampling_table)
+            couples, labels = skipgrams(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
                 X = np.array(couples, dtype="int32")
