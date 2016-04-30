@@ -7,10 +7,10 @@ import cPickle
 from keras.utils.generic_utils import Progbar
 from keras.optimizers import Adagrad
 import theano
-
+from scipy import spatial, stats
 from keras.preprocessing import text, sequence
 import logging
-
+from evaluate import Evaluate
 
 import os, re, json
 import random
@@ -72,52 +72,7 @@ f.close()
 
 average_scores = np.array(average_scores)
 
-def evaluate(model, tokenizer):
-    global_vectors, sense_vectors = model.get_weights()
-
-    global_vectors = np_utils.normalize(global_vectors)
-    sense_vectors  = np_utils.normalize(sense_vectors)
-    word_index = tokenizer.word_index
-    reverse_word_index = dict([(v, k) for k, v in list(word_index.items())])
-    def global_word_vector(w):
-        i = word_index.get(w)
-        if (not i):
-            return None
-        return global_vectors[i]
-
-    def sense_word_vector(i, sense):
-        assert(sense < 3)
-        return sense_vectors[i][sense]
-
-    def global_similarity(f_word, s_word):    
-        v1 = global_word_vector(f_word)
-        v2 = global_word_vector(s_word)
-        if (not v1 or not v2): return -1
-        else:
-           return 1.0- spatial.distance.cosine(v1, v2)
-
-    def average_similarity(f_word, s_word):
-        id_f = word_index.get(f_word)
-        id_s = word_index.get(s_word)
-        if (id_f is None or id_s is None):
-            return -1
-
-
-        else:
-            score = 0.0
-            for sense_f in xrange(3):
-                for sense_s in xrange(3)
-                    v1 = sense_word_vector(id_f, sense_f)
-                    v2 = sense_word_vector(id_s, sense_s)
-                    score += (1.0 - spatial.distance.cosine(v1, v2))
-
-            return score/9.0
-
-    global_sim = 0.0
-    avgSimC = 0.0
-
-    for 
-
+################################################
 
 
 if __name__ == "__main__":
@@ -126,7 +81,7 @@ if __name__ == "__main__":
     dim = 300
     context_size = 4
     num_senses = 3
-    nb_epoch = 10
+    nb_epoch = 2 
     model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     optimizerObj = Adagrad(lr = 0.025)
     model.compile(loss="binary_crossentropy", optimizer= optimizerObj)
@@ -136,11 +91,8 @@ if __name__ == "__main__":
         print("Fit tokenizer...")
         tokenizer = text.Tokenizer(nb_words=vocab_size)
         tokenizer.fit_on_texts(text_generator())
-        
-
         print("Save tokenizer...")
         f = open(tokenizer_fname, "wb")
-
         cPickle.dump(tokenizer, f, protocol=cPickle.HIGHEST_PROTOCOL)
         f.close()
 
@@ -150,7 +102,7 @@ if __name__ == "__main__":
         tokenizer = cPickle.load(f)
         f.close()
 
-
+    evaluator = Evaluate(tokenizer, words, context, average_scores) 
     sampling_table = sequence.make_sampling_table(vocab_size)
 
     for e in range(nb_epoch):
@@ -178,14 +130,20 @@ if __name__ == "__main__":
                     progbar.update(i, values=[("loss", np.mean(losses))])
                     batch_loss = []
                 samples_seen += len(labels)
+
+                if (i and i % 10000 == 0):
+                    global_weights, sense_weights = model.layers[0].get_weights()[0]
+                    avgSim, avgSimC = evaluator.get_scores(global_weights, sense_weights)
+                    print("scores after %d epochs:")
+                    print("\t avg-sim: %5.3f", avgSim)
+                    print("\t global-sim: %5.3f", avgSimC)
+
         print('Samples seen:', samples_seen)
 
-        avgSim, avgSimC = evaluate(model)
-        print("scores after %d epochs:")
-        print("\t avg-sim: %5.3f", avgSim)
-        print("\t global-sim: %5.3f", avgSimC)
 
 
+
+    # Save the model    
 
     print("Training completed!")
     json_string = model.to_json()
