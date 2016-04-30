@@ -1,6 +1,7 @@
 from sense import SenseEmbedding;
 from wordvec import WordEmbedding;
 from l2c import L2CEmbedding;
+from l2c_fast import L2CFastEmbedding
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
 import cPickle
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(L2CEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
+    model.add(L2CFastEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     optimizerObj = Adagrad(lr = 0.025)
     model.compile(loss="binary_crossentropy", optimizer= optimizerObj)
     fit = 0
@@ -164,7 +165,7 @@ if __name__ == "__main__":
         batch_loss = []
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
-            couples, labels = skipgrams_l2c(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
+            couples, labels = skipgrams_l2c_fast(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
                 X = np.array(couples, dtype="int32")
