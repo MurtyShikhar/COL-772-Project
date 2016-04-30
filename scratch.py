@@ -1,18 +1,13 @@
-from sense import SenseEmbedding, logl_loss;
+from sense import SenseEmbedding;
 from wordvec import WordEmbedding;
-from l2c import L2CEmbedding, logl_loss;
+from l2c import L2CEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
 import inspect
 import cPickle
-#model = Sequential()
-#model.add(SenseEmbedding(1000, 100, 3, 4))
 from keras.utils.generic_utils import Progbar
-#model.compile(loss='mse', optimizer='rmsprop')
-
+from keras.optimizers import Adagrad
 import theano
-theano.config.optimizer = 'None'
-theano.config.exception_verbosity ='high'
 
 from keras.preprocessing import text, sequence
 import logging
@@ -24,9 +19,14 @@ from keras.utils import np_utils, generic_utils
 import numpy as np
 
 
-logging.basicConfig(filename="sense_vectors.log",level=logging.INFO)
-log = logging.getLogger("ex")
-data_path = "hn-dump/HNCommentsAll.1perline.json"
+
+def logl_loss(y_true, y_pred):
+    return K.sum(-y_true*K.log(y_pred) + (y_true-1)*K.log(1-y_pred))
+
+
+
+
+data_path = "wikipedia-dump/text8"
 html_tags = re.compile(r'<.*?>')
 to_replace = [('&#x27;', "'")]
 hex_tags = re.compile(r'&.*?;')
@@ -49,9 +49,9 @@ def clean_comment(comment):
 def text_generator(path=data_path):
     f = open(path)
     for i, l in enumerate(f):
-        comment_data = json.loads(l)
-        comment_text = comment_data["comment_text"]
-        comment_text = clean_comment(comment_text)
+        #comment_data = json.loads(l)
+        #comment_text = comment_data["comment_text"]
+        comment_text = clean_comment(l)
         if (i % 50000) == 100:
             # break
             print i
@@ -137,14 +137,15 @@ def skipgrams(sequence, vocabulary_size, num_senses = 3,
 if __name__ == "__main__":
     model = Sequential()
     vocab_size = 50000
-    dim = 256
+    dim = 300
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(L2CEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
-    model.compile(loss=logl_loss, optimizer='adagrad')
-    fit = 1
-    tokenizer_fname = "HN_tokenizer_sense.pkl"
+    model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
+    optimizerObj = Adagrad(lr = 0.025)
+    model.compile(loss=logl_loss, optimizer= optimizerObj)
+    fit = 0
+    tokenizer_fname = "wikipedia_tokenizer_sense.pkl"
     if fit:
         print("Fit tokenizer...")
         tokenizer = text.Tokenizer(nb_words=vocab_size)
@@ -194,7 +195,7 @@ if __name__ == "__main__":
         print('Samples seen:', samples_seen)
     print("Training completed!")
     json_string = model.to_json()
-    open('sense_vectors_architecture.json', 'w').write(json_string)
-    model.save_weights('sense_vectors_weights.h5')
+    open('sense_vectors_wiki_architecture_lr.json', 'w').write(json_string)
+    model.save_weights('sense_vectors_wiki_weights_lr.h5')
 
 

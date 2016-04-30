@@ -8,12 +8,9 @@ import theano.tensor as T
 import theano.printing as printing
 epsilon = 0.1
 def logl_loss(y_true, y_pred):
-    return K.sum(y_true*K.log(y_pred) + (1-y_true)*K.log(1-y_pred))
+    return K.sum(-y_true*K.log(y_pred) + (y_true-1)*K.log(1-y_pred))
 
-# USE BELOW TAGS FOR DEBUGGING
-theano.config.optimizer = 'None'
-theano.config.exception_verbosity ='high'
-theano.optimizer='fast_compile'
+
 p = printing.Print('x')
 
 def get_vector(curr_word, new_sense, W_g, W_s):
