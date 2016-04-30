@@ -1,5 +1,3 @@
-from sense import SenseEmbedding;
-from wordvec import WordEmbedding;
 from l2c import L2CEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
@@ -101,23 +99,17 @@ def skipgrams(sequence, vocabulary_size, num_senses = 3,
             to_add.append(0)
 
         dict_of_contexts[wi] = to_add
-        for j in range(window_start, window_end):
-            if j != i:
-                wj = sequence[j]
-                if not wj:
-                    continue
-                couples.append([wi, wj, j- window_start])
-                if categorical:
-                    labels.append([0,1])
-                else:
-                    labels.append(1)
+# TODO: WHAT SENSES OF WORDS SHOULD BE SAMPLED AS NEGATIVE EXAMPLES? IDEALLY WOULD LIKE TO SAMPLE A RANDOM CONTEXT.
+# FOR NEGATIVE SAMPLES, y,i INDICATES A NEGATIVE SAMPLE y OF SENSE i
+        neg_to_add = [random.randint(1, vocabulary_size-1), np.random.randint(num_senses) for i in range(len(to_add)*negative_samples)]
+        dict_of_negative_samples[wi] = neg_to_add
+        couples.append((wi,to_add))
 
-# TODO: SAMPLING OF NEGATIVE EXAMPLES SHOULD BE FROM A DIFFERENT DISTRIUBTION D^{3/4} WHERE D IS THE WORD DISTRIBUTION
     if negative_samples > 0:
         nb_negative_samples = int(len(labels) * negative_samples)
         words = [c[0] for c in couples]
         random.shuffle(words)
-        # FOR NEGATIVE SAMPLES, -i INDICATES SENSE A NEATIVE SAMPLE OF SENSE i
+        
         couples += [[words[i %len(words)], random.randint(1, vocabulary_size-1), -1*np.random.randint(num_senses+1)] for i in range(nb_negative_samples)]
         if categorical:
             labels += [[1,0]]*nb_negative_samples
@@ -144,8 +136,8 @@ if __name__ == "__main__":
     model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     optimizerObj = Adagrad(lr = 0.025)
     model.compile(loss=logl_loss, optimizer= optimizerObj)
-    fit = 0
-    tokenizer_fname = "wikipedia_tokenizer_sense.pkl"
+    fit = 1
+    tokenizer_fname = "wikipedia_tokenizer_sense_l2c.pkl"
     if fit:
         print("Fit tokenizer...")
         tokenizer = text.Tokenizer(nb_words=vocab_size)
