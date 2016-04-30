@@ -3,7 +3,6 @@ from wordvec import WordEmbedding;
 from l2c import L2CEmbedding;
 from keras.models import Sequential;
 from keras.utils.np_utils import to_categorical
-import inspect
 import cPickle
 from keras.utils.generic_utils import Progbar
 from keras.optimizers import Adagrad
@@ -18,24 +17,19 @@ import random
 from keras.utils import np_utils, generic_utils
 import numpy as np
 
+from sample_skipgrams import skipgrams
 
 
-def logl_loss(y_true, y_pred):
-    return K.sum(-y_true*K.log(y_pred) + (y_true-1)*K.log(1-y_pred))
 
-
+################################################
+# PARSING THE INPUT DATASET                    #
+################################################
 
 
 data_path = "wikipedia-dump/text8"
 html_tags = re.compile(r'<.*?>')
 to_replace = [('&#x27;', "'")]
 hex_tags = re.compile(r'&.*?;')
-
-def get_class_that_defined_method(meth):
-    for cls in inspect.getmro(meth.im_class):
-        if meth.__name__ in cls.__dict__: 
-            return inspect.getfile(cls)
-    return None
 
 def clean_comment(comment):
     c = str(comment.encode("utf-8"))
@@ -58,81 +52,73 @@ def text_generator(path=data_path):
         yield comment_text
     f.close()
 
-def skipgrams(sequence, vocabulary_size, num_senses = 3,
-              window_size=4, negative_samples=1., shuffle=True,
-              categorical=False, sampling_table=None):
-    '''Take a sequence (list of indexes of words),
-    returns couples of [word_index, other_word index] and labels (1s or 0s),
-    where label = 1 if 'other_word' belongs to the context of 'word',
-    and label=0 if 'other_word' is ramdomly sampled
-    # Arguments
-        vocabulary_size: int. maximum possible word index + 1
-        window_size: int. actually half-window.
-            The window of a word wi will be [i-window_size, i+window_size+1]
-        negative_samples: float >= 0. 0 for no negative (=random) samples.
-            1 for same number as positive samples. etc.
-        categorical: bool. if False, labels will be
-            integers (eg. [0, 1, 1 .. ]),
-            if True labels will be categorical eg. [[1,0],[0,1],[0,1] .. ]
-    # Returns
-        couples, lables: where `couples` are int pairs and
-            `labels` are either 0 or 1.
-    # Notes
-        By convention, index 0 in the vocabulary is
-        a non-word and will be skipped.
-    '''
-    couples = []
-    labels = []
-    dict_of_contexts = {}
 
-    for i, wi in enumerate(sequence):
-        if not wi:
-            continue
-        if sampling_table is not None:
-            if sampling_table[wi] < random.random():
-                continue
+################################################
+# EVALUATION OF THE LEARNT EMBEDDINGS          #
+################################################
+test_data_path = "test-data/ratings.txt"
+f = open(test_data_path, 'r')
+words = []
+context = []
+average_scores = []
+for line in f:
+    ele = line.split("\t")
+    words.append((ele[1].lower(), ele[3].lower()))
+    context.append((ele[5], ele[6]))
+    average_scores.append(float(ele[7]))
 
-# TODO: ASSUMES EACH WORD OCCURS ATMOST ONCE PER SENTENCE
-               
-        window_start = max(0, i-window_size)
-        window_end = min(len(sequence), i+window_size+1)
-        to_add = sequence[window_start : i] + sequence[i+1: window_end]
-        while (len(to_add) != 2*window_size + 1):
-            to_add.append(0)
+print(len(words))
+f.close()
 
-        dict_of_contexts[wi] = to_add
-        for j in range(window_start, window_end):
-            if j != i:
-                wj = sequence[j]
-                if not wj:
-                    continue
-                couples.append([wi, wj, j- window_start])
-                if categorical:
-                    labels.append([0,1])
-                else:
-                    labels.append(1)
+average_scores = np.array(average_scores)
 
-# TODO: SAMPLING OF NEGATIVE EXAMPLES SHOULD BE FROM A DIFFERENT DISTRIUBTION D^{3/4} WHERE D IS THE WORD DISTRIBUTION
-    if negative_samples > 0:
-        nb_negative_samples = int(len(labels) * negative_samples)
-        words = [c[0] for c in couples]
-        random.shuffle(words)
-        # FOR NEGATIVE SAMPLES, -i INDICATES SENSE A NEATIVE SAMPLE OF SENSE i
-        couples += [[words[i %len(words)], random.randint(1, vocabulary_size-1), -1*np.random.randint(num_senses+1)] for i in range(nb_negative_samples)]
-        if categorical:
-            labels += [[1,0]]*nb_negative_samples
+def evaluate(model, tokenizer):
+    global_vectors, sense_vectors = model.get_weights()
+
+    global_vectors = np_utils.normalize(global_vectors)
+    sense_vectors  = np_utils.normalize(sense_vectors)
+    word_index = tokenizer.word_index
+    reverse_word_index = dict([(v, k) for k, v in list(word_index.items())])
+    def global_word_vector(w):
+        i = word_index.get(w)
+        if (not i):
+            return None
+        return global_vectors[i]
+
+    def sense_word_vector(i, sense):
+        assert(sense < 3)
+        return sense_vectors[i][sense]
+
+    def global_similarity(f_word, s_word):    
+        v1 = global_word_vector(f_word)
+        v2 = global_word_vector(s_word)
+        if (not v1 or not v2): return -1
         else:
-            labels += [0]*nb_negative_samples
+           return 1.0- spatial.distance.cosine(v1, v2)
 
-    if shuffle:
-        seed = random.randint(0,10e6)
-        random.seed(seed)
-        random.shuffle(couples)
-        random.seed(seed)
-        random.shuffle(labels)
-    couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y, z) in couples]
-    return couples_augmented, labels
-    # return couples, labels
+    def average_similarity(f_word, s_word):
+        id_f = word_index.get(f_word)
+        id_s = word_index.get(s_word)
+        if (id_f is None or id_s is None):
+            return -1
+
+
+        else:
+            score = 0.0
+            for sense_f in xrange(3):
+                for sense_s in xrange(3)
+                    v1 = sense_word_vector(id_f, sense_f)
+                    v2 = sense_word_vector(id_s, sense_s)
+                    score += (1.0 - spatial.distance.cosine(v1, v2))
+
+            return score/9.0
+
+    global_sim = 0.0
+    avgSimC = 0.0
+
+    for 
+
+
 
 if __name__ == "__main__":
     model = Sequential()
@@ -193,6 +179,14 @@ if __name__ == "__main__":
                     batch_loss = []
                 samples_seen += len(labels)
         print('Samples seen:', samples_seen)
+
+        avgSim, avgSimC = evaluate(model)
+        print("scores after %d epochs:")
+        print("\t avg-sim: %5.3f", avgSim)
+        print("\t global-sim: %5.3f", avgSimC)
+
+
+
     print("Training completed!")
     json_string = model.to_json()
     open('sense_vectors_wiki_architecture_lr.json', 'w').write(json_string)
