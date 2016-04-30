@@ -180,3 +180,47 @@ def skipgrams_l2c(sequence, vocabulary_size, num_senses = 3,
         random.shuffle(labels)
     triples_augmented = [[x,y,z]+dict_of_contexts[x] for (x, y, z) in triples]
     return triples_augmented, labels
+
+def skipgrams_l2c_fast(sequence, vocabulary_size, num_senses = 3,
+              window_size=4, negative_samples=1., shuffle=True,
+              categorical=False, sampling_table=None):
+    training = []
+    labels = []
+    dict_of_contexts = {}
+
+    for i, wi in enumerate(sequence):
+        if not wi:
+            continue
+        if sampling_table is not None:
+            if sampling_table[wi] < random.random():
+                continue
+
+# TODO: ASSUMES EACH WORD OCCURS ATMOST ONCE PER SENTENCE
+               
+        window_start = max(0, i-window_size)
+        window_end = min(len(sequence), i+window_size+1)
+        context = sequence[window_start: window_end]
+        while (len(context) != 2*window_size + 1):
+            context.append(0)
+        training.append((wi,1,context))
+        if categorical:
+            labels.append([0,1])
+        else:
+            labels.append(1)
+
+# TODO: IDEALLY WOULD LIKE TO SAMPLE A NEGATIVE CONTEXT RANDOMLY FROM ALL CONTEXTS
+        neg_context = [random.randint(1, vocabulary_size-1) for i in range(len(context))]
+        training.append((wi,0,neg_context))
+        if categorical:
+            labels.append([1,0])
+        else:
+            labels.append(0)
+
+
+    if shuffle:
+        seed = random.randint(0,10e6)
+        random.seed(seed)
+        random.shuffle(training)
+        random.seed(seed)
+        random.shuffle(labels)
+    return training, labels
