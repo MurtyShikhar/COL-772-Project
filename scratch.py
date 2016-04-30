@@ -18,7 +18,7 @@ import random
 from keras.utils import np_utils, generic_utils
 import numpy as np
 
-from sample_skipgrams import skipgrams_wordvec, skipgrams_sense, skipgrams_l2c
+from sample_skipgrams import skipgrams_wordvec, skipgrams_sense, skipgrams_l2c, skipgrams_l2c_fast
 
 
 
@@ -44,8 +44,8 @@ def clean_comment(comment):
 def text_generator(path=data_path):
     f = open(path)
     for i, l in enumerate(f):
-        #comment_data = json.loads(l)
-        #comment_text = comment_data["comment_text"]
+        # comment_data = json.loads(l)
+        # comment_text = comment_data["comment_text"]
         comment_text = clean_comment(l)
         if (i % 50000) == 100:
             # break
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     model.add(L2CFastEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     optimizerObj = Adagrad(lr = 0.025)
     model.compile(loss="binary_crossentropy", optimizer= optimizerObj)
-    fit = 0
+    fit = 1
     tokenizer_fname = "wikipedia_tokenizer_sense.pkl"
     if fit:
         print("Fit tokenizer...")
@@ -168,9 +168,9 @@ if __name__ == "__main__":
             couples, labels = skipgrams_l2c_fast(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
+                # print couples
                 X = np.array(couples, dtype="int32")
                 labels= np.array(labels, dtype="int32")
-
                 loss = model.train_on_batch(X, labels)
                 losses.append(loss)
                 batch_loss.append(loss)

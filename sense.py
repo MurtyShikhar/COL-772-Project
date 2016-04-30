@@ -44,7 +44,7 @@ class SenseEmbedding(Layer):
         # sequence_vectors is a num_senses x nb x self.vector_dim
         sequence_vectors = W_s[x[:,0]].dimshuffle(1,0,2)
         # scores is a matrix of size num_senses x nb
-        scores, ignore = theano.scan(lambda w: K.batch_dot(K.l2_normalize(w, axis = 0), sum_context, axes = 1), sequences = [sequence_vectors], outputs_info = None)
+        scores, ignore = theano.scan(lambda w: K.batch_dot(K.l2_normalize(w, axis = 1), sum_context, axes = 1), sequences = [sequence_vectors], outputs_info = None)
         scores = scores.reshape((self.num_senses, nb))
         # right_senses is a vector of size nb
         right_senses = K.argmax(scores, axis = 0)
