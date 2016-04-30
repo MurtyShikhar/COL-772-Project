@@ -202,7 +202,7 @@ def skipgrams_l2c_fast(sequence, vocabulary_size, num_senses = 3,
         context = sequence[window_start: window_end]
         while (len(context) != 2*window_size + 1):
             context.append(0)
-        training.append((wi,1,context))
+        training.append((wi,context))
         if categorical:
             labels.append([0,1])
         else:
@@ -210,7 +210,7 @@ def skipgrams_l2c_fast(sequence, vocabulary_size, num_senses = 3,
 
 # TODO: IDEALLY WOULD LIKE TO SAMPLE A NEGATIVE CONTEXT RANDOMLY FROM ALL CONTEXTS
         neg_context = [random.randint(1, vocabulary_size-1) for i in range(len(context))]
-        training.append((wi,0,neg_context))
+        training.append((wi,neg_context))
         if categorical:
             labels.append([1,0])
         else:
