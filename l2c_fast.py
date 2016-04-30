@@ -13,9 +13,9 @@ epsilon = 0.1
 p = printing.Print('x')
 
 # USE BELOW TAGS FOR DEBUGGING
-theano.config.optimizer = 'None'
-theano.config.exception_verbosity ='high'
-theano.optimizer='fast_compile'
+# theano.config.optimizer = 'None'
+# theano.config.exception_verbosity ='high'
+# theano.optimizer='fast_compile'
 
 def get_vector(curr_word, new_sense, W_g, W_s):
     cond = T.eq(new_sense, -1)
@@ -38,7 +38,6 @@ class L2CFastEmbedding(Layer):
         self.activation = activations.get(activation)
         self.output_dim = output_dim
         self.num_senses = num_senses
-        # self.sense_vocab[word] contains all the possible senses which the model is CONFIDENT about. 4 means W_b[word] else i means W_s[word,i]
         kwargs['input_dtype'] = 'int32'
         if self.input_dim:
             kwargs['input_shape'] = (self.input_dim, ) 
@@ -73,7 +72,7 @@ class L2CFastEmbedding(Layer):
         context_vector = T.sum(W_g[context], axis = 0)
         # start with -1 with none of the words disambiguated
         start_senses = -1*T.ones_like(context)
-        output_alg, updates = theano.scan(self.update_context_vec_with_best_sense, sequences = [context, T.arange(4)], outputs_info = [start_senses, context_vector], non_sequences = [W_g, W_s])
+        output_alg, ignore_updates = theano.scan(self.update_context_vec_with_best_sense, sequences = [context, T.arange(4)], outputs_info = [start_senses, context_vector], non_sequences = [W_g, W_s])
         disambiguated_senses = output_alg[0][-1]
         context_vector = output_alg[1][-1]
         word_sense = self.get_best_sense(word, -1, context_vector, W_s)
@@ -85,7 +84,8 @@ class L2CFastEmbedding(Layer):
         def calc_score(context_word, context_word_sense, W_g, W_s):
             return K.sigmoid(K.dot(get_vector(word, word_sense, W_g, W_s),get_vector(context_word, context_word_sense, W_g, W_s)))
         mid_index = context.shape[0]/2
-        return K.mean(theano.scan(calc_score , sequences = [context[:mid_index]+context[mid_index+1:], context_senses[:mid_index]+context_senses[mid_index+1:]], non_sequences = [self.W_s, self.W_g])[0])
+        output, ignore_updates = theano.scan(calc_score , sequences = [T.concatenate([context[:mid_index],context[mid_index+1:]]), T.concatenate([context_senses[:mid_index],context_senses[mid_index+1:]])], non_sequences = [self.W_g, self.W_s])
+        return K.mean(output)
 
     def call(self, x, mask = None):
         # x is of dimension nb x (2*context_size + 2) where x[:,0] are the words, x[:,1:] is the context
@@ -93,10 +93,11 @@ class L2CFastEmbedding(Layer):
         W_s = self.W_s
         nb = x.shape[0]
         context_length = self.input_dim - 1
-        def final_loss(word, is_pos, context):
+        def final_loss(word, context):
             right_senses, word_sense = self.disambiguate_context(word, context, W_g, W_s)
             return self.loss_percontext(word, word_sense, context, right_senses)
-        return self.activation(theano.scan(final_loss, sequences=[x[:,0], x[:,1:]])[0])
+        output = theano.scan(final_loss, sequences=[x[:,0], x[:,1:]])[0]
+        return self.activation(output.reshape((nb,1)))
 
     def get_output_shape_for(self, input_shape):
         assert input_shape and len(input_shape) == 2
