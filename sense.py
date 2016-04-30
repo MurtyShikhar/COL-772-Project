@@ -6,9 +6,6 @@ from keras import initializations, activations
 import theano
 import theano.tensor as T
 
-def logl_loss(y_true, y_pred):
-    return K.sum(-y_true*K.log(y_pred) + (y_true-1)*K.log(1-y_pred))
-
 # USE BELOW TAGS FOR DEBUGGING
 # theano.config.optimizer = 'None'
 # theano.config.exception_verbosity ='high'

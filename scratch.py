@@ -17,7 +17,7 @@ import random
 from keras.utils import np_utils, generic_utils
 import numpy as np
 
-from sample_skipgrams import skipgrams
+from sample_skipgrams import skipgrams_wordvec, skipgrams_sense, skipgrams_l2c
 
 
 
@@ -106,7 +106,7 @@ def evaluate(model, tokenizer):
         else:
             score = 0.0
             for sense_f in xrange(3):
-                for sense_s in xrange(3)
+                for sense_s in xrange(3):
                     v1 = sense_word_vector(id_f, sense_f)
                     v2 = sense_word_vector(id_s, sense_s)
                     score += (1.0 - spatial.distance.cosine(v1, v2))
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     context_size = 4
     num_senses = 3
     nb_epoch = 10
-    model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
+    model.add(L2CEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     optimizerObj = Adagrad(lr = 0.025)
     model.compile(loss="binary_crossentropy", optimizer= optimizerObj)
     fit = 0
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         batch_loss = []
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
-            couples, labels = skipgrams(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
+            couples, labels = skipgrams_l2c(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
                 X = np.array(couples, dtype="int32")
