@@ -17,7 +17,7 @@ import random
 from keras.utils import np_utils, generic_utils
 import numpy as np
 
-from sample_skipgrams import skipgrams
+from sample_skipgrams import skipgrams_wordvec, skipgrams_sense, skipgrams_l2c
 
 
 
@@ -72,8 +72,6 @@ f.close()
 
 average_scores = np.array(average_scores)
 
-################################################
-
 
 if __name__ == "__main__":
     model = Sequential()
@@ -116,7 +114,7 @@ if __name__ == "__main__":
         batch_loss = []
         for i, seq in enumerate(tokenizer.texts_to_sequences_generator(text_generator())):
             # get skipgram couples for one text in the dataset
-            couples, labels = skipgrams(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
+            couples, labels = skipgrams_l2c(seq, vocab_size, num_senses =num_senses, window_size=4, negative_samples=1., sampling_table=sampling_table)
             if couples:
                 # one gradient update per sentence (one sentence = a few 1000s of word couples)
                 X = np.array(couples, dtype="int32")
