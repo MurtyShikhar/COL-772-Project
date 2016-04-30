@@ -130,7 +130,7 @@ def skipgrams(sequence, vocabulary_size, num_senses = 3,
         random.shuffle(couples)
         random.seed(seed)
         random.shuffle(labels)
-    couples_augmented = [[x,y,z]+dict_of_contexts[x] for (x, y, z) in couples]
+    couples_augmented = [[x,y]+dict_of_contexts[x] for (x, y, z) in couples]
     return couples_augmented, labels
     # return couples, labels
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     nb_epoch = 10
     model.add(SenseEmbedding(input_dim = 2*context_size + 2, vocab_dim = vocab_size+1, vector_dim = dim, num_senses = 3))
     optimizerObj = Adagrad(lr = 0.025)
-    model.compile(loss=logl_loss, optimizer= optimizerObj)
+    model.compile(loss="binary_crossentropy", optimizer= optimizerObj)
     fit = 0
     tokenizer_fname = "wikipedia_tokenizer_sense.pkl"
     if fit:
