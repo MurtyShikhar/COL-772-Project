@@ -72,7 +72,7 @@ class L2CFastEmbedding(Layer):
         context_vector = T.sum(W_g[context], axis = 0)
         # start with -1 with none of the words disambiguated
         start_senses = -1*T.ones_like(context)
-        output_alg, ignore_updates = theano.scan(self.update_context_vec_with_best_sense, sequences = [context, T.arange(4)], outputs_info = [start_senses, context_vector], non_sequences = [W_g, W_s])
+        output_alg, ignore_updates = theano.scan(self.update_context_vec_with_best_sense, sequences = [context, T.arange(self.num_senses +1)], outputs_info = [start_senses, context_vector], non_sequences = [W_g, W_s])
         disambiguated_senses = output_alg[0][-1]
         context_vector = output_alg[1][-1]
         word_sense = self.get_best_sense(word, -1, context_vector, W_s)
